@@ -16,6 +16,11 @@
     <task id="Activity_0g1t6u4">
       <incoming>Flow_05r6dac</incoming>
       <outgoing>Flow_1pu4184</outgoing>
+      <property id="Property_1wk15p1" name="__targetRef_placeholder" />
+      <dataInputAssociation id="DataInputAssociation_0aqyxv0">
+        <sourceRef>DataStoreReference_1s6yeot</sourceRef>
+        <targetRef>Property_1wk15p1</targetRef>
+      </dataInputAssociation>
     </task>
     <sequenceFlow id="Flow_05r6dac" sourceRef="Gateway_185ae4l" targetRef="Activity_0g1t6u4" />
     <exclusiveGateway id="Gateway_1p0tb7k">
@@ -98,6 +103,10 @@
         <di:waypoint x="196" y="138" />
         <di:waypoint x="230" y="138" />
         <di:waypoint x="230" y="205" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataInputAssociation_0aqyxv0_di" bpmnElement="DataInputAssociation_0aqyxv0">
+        <di:waypoint x="225" y="345" />
+        <di:waypoint x="360" y="210" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
