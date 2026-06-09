@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPMN 2.0 Editor – Tabbed Canvas & Sliding Code Panel</title>
+  <!-- bpmn-js -->
+  <script src="https://unpkg.com/bpmn-js@15.0.0/dist/bpmn-modeler.development.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@15.0.0/dist/assets/diagram-js.css">
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@15.0.0/dist/assets/bpmn-font/css/bpmn.css">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #f4f5f7;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header Toolbar */
+    .header {
+      background: #ffffff;
+      border-bottom: 1px solid #d1d5db;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      z-index: 10;
+    }
+    .header button {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #1f2937;
+    }
+    .header button i { font-size: 0.9rem; }
+    .header button:hover { background: #e5e7eb; border-color: #9ca3af; }
+    .header button.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #1d4ed8;
+    }
+    .header button.success { background: #059669; color: #fff; border-color: #047857; }
+    .header button.success:hover { background: #047857; }
+    .separator {
+      width: 1px; height: 28px; background: #d1d5db; margin: 0 4px;
+    }
+
+    /* Main layout */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Code panel (sliding) */
+    .code-panel {
+      background: #ffffff;
+      border-right: 1px solid #d1d5db;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease, opacity 0.25s;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .code-panel.collapsed {
+      width: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .code-panel-header {
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #4b5563;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .code-toolbar {
+      display: flex;
+      gap: 4px;
+    }
+    .code-toolbar button {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      color: #4b5563;
+      transition: background 0.15s;
+    }
+    .code-toolbar button:hover {
+      background: #e5e7eb;
+    }
+    .code-panel textarea {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      tab-size: 2;
+      background: #ffffff;
+      color: #1f2937;
+    }
+    .apply-btn-row {
+      padding: 8px;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .apply-btn-row button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    /* Canvas area */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 2px;
+      overflow-x: auto;
+      min-height: 40px;
+    }
+    .tab {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      background: #e5e7eb;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      user-select: none;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: #4b5563;
+      transition: background 0.1s;
+    }
+    .tab.active {
+      background: #ffffff;
+      border-color: #d1d5db;
+      color: #111827;
+      font-weight: 600;
+    }
+    .tab .tab-name {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: text;
+    }
+    .tab .close-btn {
+      margin-left: 8px;
+      color: #9ca3af;
+      font-size: 0.8rem;
+      opacity: 0.6;
+      transition: opacity 0.1s;
+    }
+    .tab .close-btn:hover { opacity: 1; color: #ef4444; }
+    .tab.active .close-btn { opacity: 0.9; }
+    .add-tab-btn {
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      font-size: 1.2rem;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+    .add-tab-btn:hover { background: #e5e7eb; color: #111827; }
+
+    /* Canvas container */
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background: #ffffff;
+    }
+    #bpmnCanvas { width: 100%; height: 100%; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .modal-box {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 300px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .modal-box p { margin-bottom: 20px; font-size: 0.95rem; }
+    .modal-box button {
+      margin: 0 8px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .modal-box .confirm-btn { background: #ef4444; color: white; border-color: #dc2626; }
+    .modal-box .cancel-btn { background: #f3f4f6; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: #1f2937;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .bjs-powered-by { display: none; }
+  </style>
+</head>
+<body>
+  <!-- Header toolbar -->
+  <div class="header">
+    <!-- Priority order: Open, New, Code (toggle), Sample, Download SVG, Download Code -->
+    <button id="openFileBtn" title="Open XML/BPMN file"><i class="fas fa-folder-open"></i> Open</button>
+    <button id="newTabBtn" title="New diagram tab"><i class="fas fa-plus"></i> New</button>
+    <button id="toggleCodeBtn" title="Toggle live code panel"><i class="fas fa-code"></i> Code</button>
+    <button id="loadSampleBtn" title="Load sample template (new tab)"><i class="fas fa-file-code"></i> Sample</button>
+    <div class="separator"></div>
+    <button id="btnExportSVG" title="Download SVG"><i class="fas fa-image"></i> SVG</button>
+    <button id="btnExportBPMN" class="success" title="Download BPMN XML"><i class="fas fa-download"></i> BPMN</button>
+    <input type="file" id="fileInput" accept=".xml,.bpmn" style="display:none;">
+    <span style="margin-left:auto; font-size:0.75rem; color:#6b7280;">Tabbed BPMN Editor</span>
+  </div>
+
+  <!-- Main layout -->
+  <div class="main">
+    <!-- Sliding code panel -->
+    <div class="code-panel collapsed" id="codePanel">
+      <div class="code-panel-header">
+        <span>Live XML</span>
+        <div class="code-toolbar">
+          <button id="pasteBtn" title="Paste from clipboard"><i class="fas fa-paste"></i> Paste</button>
+          <button id="copyBtn" title="Copy all code"><i class="fas fa-copy"></i> Copy</button>
+          <button id="clearBtn" title="Clear editor"><i class="fas fa-eraser"></i> Clear</button>
+          <button id="selectAllBtn" title="Select all text"><i class="fas fa-text-height"></i> Select All</button>
+        </div>
+      </div>
+      <textarea id="xmlEditor" placeholder="BPMN XML of active tab..."></textarea>
+      <div class="apply-btn-row">
+        <button id="applyCodeBtn"><i class="fas fa-sync-alt"></i> Render XML</button>
+      </div>
+    </div>
+
+    <!-- Canvas area with tabs -->
+    <div class="canvas-area">
+      <div class="tab-bar" id="tabBar"></div>
+      <div class="canvas-container">
+        <div id="bpmnCanvas"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Close confirmation modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <p><strong>Close this tab?</strong><br>Unsaved changes will be lost.</p>
+      <button class="cancel-btn" id="modalCancel">Cancel</button>
+      <button class="confirm-btn" id="modalConfirm">Close</button>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    (function() {
+      // Toast helper
+      const toastContainer = document.getElementById('toastContainer');
+      function toast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        toastContainer.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+      }
+
+      // bpmn-js modeler
+      const canvasEl = document.getElementById('bpmnCanvas');
+      const bpmnModeler = new BpmnJS({
+        container: canvasEl,
+        keyboard: { bindTo: document }
+      });
+
+      // DOM elements
+      const tabBar = document.getElementById('tabBar');
+      const xmlEditor = document.getElementById('xmlEditor');
+      const codePanel = document.getElementById('codePanel');
+      const toggleCodeBtn = document.getElementById('toggleCodeBtn');
+      const modalOverlay = document.getElementById('modalOverlay');
+      const modalCancel = document.getElementById('modalCancel');
+      const modalConfirm = document.getElementById('modalConfirm');
+
+      // Tab management
+      let tabs = [];
+      let activeTabId = null;
+      let pendingCloseTabId = null;
+
+      // Default empty diagram with BPMN definitions
+      const emptyDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  targetNamespace="http://bpmn.io/schema/bpmn"
+  id="Definitions_1">
+  <process id="Process_1" isExecutable="true">
+    <startEvent id="StartEvent_1" name="Start" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <omgdc:Bounds x="160" y="120" width="36" height="36" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`;
+
+      // More complete sample template
+      const sampleDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="Definitions_1">
+  <process id="Process_1" isExecutable="true">
+    <startEvent id="StartEvent_1" name="Order received">
+      <outgoing>Flow_1</outgoing>
+    </startEvent>
+    <task id="Task_Check" name="Check availability">
+      <incoming>Flow_1</incoming>
+      <outgoing>Flow_2</outgoing>
+    </task>
+    <sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Check" />
+    <exclusiveGateway id="Gateway_Avail" name="Available?">
+      <incoming>Flow_2</incoming>
+      <outgoing>Flow_Yes</outgoing>
+      <outgoing>Flow_No</outgoing>
+    </exclusiveGateway>
+    <sequenceFlow id="Flow_2" sourceRef="Task_Check" targetRef="Gateway_Avail" />
+    <task id="Task_Ship" name="Ship order">
+      <incoming>Flow_Yes</incoming>
+      <outgoing>Flow_Done</outgoing>
+    </task>
+    <sequenceFlow id="Flow_Yes" sourceRef="Gateway_Avail" targetRef="Task_Ship" />
+    <sequenceFlow id="Flow_No" sourceRef="Gateway_Avail" targetRef="EndEvent_No" />
+    <endEvent id="EndEvent_No" name="Out of stock">
+      <incoming>Flow_No</incoming>
+    </endEvent>
+    <endEvent id="EndEvent_Done" name="Completed">
+      <incoming>Flow_Done</incoming>
+    </endEvent>
+    <sequenceFlow id="Flow_Done" sourceRef="Task_Ship" targetRef="EndEvent_Done" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <omgdc:Bounds x="160" y="80" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Check_di" bpmnElement="Task_Check">
+        <omgdc:Bounds x="250" y="58" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Avail_di" bpmnElement="Gateway_Avail">
+        <omgdc:Bounds x="420" y="73" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Ship_di" bpmnElement="Task_Ship">
+        <omgdc:Bounds x="530" y="58" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Done_di" bpmnElement="EndEvent_Done">
+        <omgdc:Bounds x="700" y="80" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_No_di" bpmnElement="EndEvent_No">
+        <omgdc:Bounds x="420" y="180" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <omgdi:waypoint x="196" y="98" />
+        <omgdi:waypoint x="250" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <omgdi:waypoint x="350" y="98" />
+        <omgdi:waypoint x="420" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Yes_di" bpmnElement="Flow_Yes">
+        <omgdi:waypoint x="470" y="98" />
+        <omgdi:waypoint x="530" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_No_di" bpmnElement="Flow_No">
+        <omgdi:waypoint x="445" y="123" />
+        <omgdi:waypoint x="445" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Done_di" bpmnElement="Flow_Done">
+        <omgdi:waypoint x="630" y="98" />
+        <omgdi:waypoint x="700" y="98" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`;
+
+      // ── Tab helpers ───────────────────────────────
+      function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+      function createTab(name, xml) {
+        return { id: generateId(), name: name || 'Diagram', xml: xml || emptyDiagram };
+      }
+      function addTab(name, xml, switchTo = true) {
+        const tab = createTab(name, xml);
+        tabs.push(tab);
+        renderTabBar();
+        if (switchTo) switchTab(tab.id);
+      }
+      function removeTab(tabId) {
+        const index = tabs.findIndex(t => t.id === tabId);
+        if (index === -1) return;
+        if (tabs.length === 1) {
+          toast('Cannot close the last tab.');
+          return;
+        }
+        tabs.splice(index, 1);
+        renderTabBar();
+        if (activeTabId === tabId) {
+          const newIndex = Math.min(index, tabs.length - 1);
+          switchTab(tabs[newIndex].id);
+        }
+      }
+      async function switchTab(tabId) {
+        if (activeTabId === tabId) return;
+        await saveActiveTabXML();
+        activeTabId = tabId;
+        const tab = tabs.find(t => t.id === tabId);
+        if (!tab) return;
+        xmlEditor.value = tab.xml;
+        await renderDiagram(tab.xml);
+        renderTabBar();
+      }
+      async function saveActiveTabXML() {
+        if (!activeTabId) return;
+        try {
+          const { xml } = await bpmnModeler.saveXML({ format: true });
+          const tab = tabs.find(t => t.id === activeTabId);
+          if (tab) tab.xml = xml;
+        } catch (e) {
+          console.warn('Could not save tab XML', e);
+        }
+      }
+      async function renderDiagram(xml) {
+        try {
+          await bpmnModeler.importXML(xml);
+          toast('Diagram loaded');
+        } catch (err) {
+          toast('Failed to render diagram: ' + err.message);
+        }
+      }
+      function escapeHtml(text) {
+        return String(text).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]);
+      }
+      function sanitizeFilename(name) {
+        return name.replace(/[^a-zA-Z0-9_\-. ]/g, '').replace(/\s+/g, '_').substring(0, 100) || 'diagram';
+      }
+
+      // ── Render tab bar ────────────────────────────
+      function renderTabBar() {
+        tabBar.innerHTML = '';
+        tabs.forEach(tab => {
+          const tabEl = document.createElement('div');
+          tabEl.className = `tab${tab.id === activeTabId ? ' active' : ''}`;
+          tabEl.setAttribute('data-tabid', tab.id);
+          tabEl.innerHTML = `
+            <span class="tab-name" title="Double-click to rename">${escapeHtml(tab.name)}</span>
+            <i class="fas fa-times close-btn" title="Close tab"></i>
+          `;
+          tabEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('close-btn')) return;
+            switchTab(tab.id);
+          });
+          tabEl.querySelector('.close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            pendingCloseTabId = tab.id;
+            modalOverlay.classList.add('active');
+          });
+          const nameSpan = tabEl.querySelector('.tab-name');
+          nameSpan.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            startRename(tab, nameSpan);
+          });
+          tabBar.appendChild(tabEl);
+        });
+        const addBtn = document.createElement('button');
+        addBtn.className = 'add-tab-btn';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+        addBtn.title = 'New diagram tab';
+        addBtn.addEventListener('click', () => addTab('Diagram ' + (tabs.length + 1), emptyDiagram));
+        tabBar.appendChild(addBtn);
+      }
+
+      function startRename(tab, span) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = tab.name;
+        input.style.width = '120px';
+        input.style.padding = '2px 4px';
+        input.style.fontSize = '0.8rem';
+        span.replaceWith(input);
+        input.focus();
+        input.select();
+        const finish = () => {
+          const newName = input.value.trim() || 'Untitled';
+          tab.name = newName;
+          renderTabBar();
+        };
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') { input.value = tab.name; input.blur(); }
+        });
+      }
+
+      // ── Modal handling ────────────────────────────
+      modalCancel.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+        pendingCloseTabId = null;
+      });
+      modalConfirm.addEventListener('click', () => {
+        if (pendingCloseTabId) {
+          removeTab(pendingCloseTabId);
+          pendingCloseTabId = null;
+        }
+        modalOverlay.classList.remove('active');
+      });
+
+      // ── Toolbar actions ──────────────────────────
+      document.getElementById('newTabBtn').addEventListener('click', () => {
+        addTab('Diagram ' + (tabs.length + 1), emptyDiagram);
+      });
+
+      document.getElementById('loadSampleBtn').addEventListener('click', () => {
+        // Always creates a new tab with sample content, never overrides current
+        addTab('Sample Process', sampleDiagram);
+      });
+
+      document.getElementById('btnExportBPMN').addEventListener('click', async () => {
+        await saveActiveTabXML();
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+        const blob = new Blob([tab.xml], { type: 'application/bpmn+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = sanitizeFilename(tab.name) + '.bpmn';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('BPMN file downloaded');
+      });
+
+      document.getElementById('btnExportSVG').addEventListener('click', async () => {
+        try {
+          const { svg } = await bpmnModeler.saveSVG();
+          const blob = new Blob([svg], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = sanitizeFilename(tabs.find(t => t.id === activeTabId)?.name || 'diagram') + '.svg';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast('SVG exported');
+        } catch (err) {
+          toast('SVG export failed');
+        }
+      });
+
+      document.getElementById('openFileBtn').addEventListener('click', () => {
+        document.getElementById('fileInput').click();
+      });
+      document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const name = file.name.replace(/\.(xml|bpmn)$/i, '');
+          addTab(name, ev.target.result);
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // ── Code panel toggle ─────────────────────────
+      toggleCodeBtn.addEventListener('click', () => {
+        codePanel.classList.toggle('collapsed');
+        toggleCodeBtn.classList.toggle('active', !codePanel.classList.contains('collapsed'));
+      });
+
+      // ── Code panel extra buttons ──────────────────
+      document.getElementById('pasteBtn').addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          xmlEditor.value = text;
+          toast('Pasted from clipboard');
+        } catch { toast('Clipboard access denied'); }
+      });
+      document.getElementById('copyBtn').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(xmlEditor.value);
+          toast('Code copied to clipboard');
+        } catch { toast('Copy failed'); }
+      });
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        xmlEditor.value = '';
+        toast('Editor cleared');
+      });
+      document.getElementById('selectAllBtn').addEventListener('click', () => {
+        xmlEditor.select();
+        toast('All text selected');
+      });
+
+      // ── Apply code to diagram ─────────────────────
+      document.getElementById('applyCodeBtn').addEventListener('click', async () => {
+        if (!activeTabId) return;
+        const newXml = xmlEditor.value;
+        try {
+          await bpmnModeler.importXML(newXml);
+          const tab = tabs.find(t => t.id === activeTabId);
+          if (tab) tab.xml = newXml;
+          toast('Diagram updated from code');
+        } catch (err) {
+          toast('Invalid XML: ' + err.message);
+        }
+      });
+
+      // ── Initialise ────────────────────────────────
+      const initialTab = createTab('Diagram 1', emptyDiagram);
+      tabs.push(initialTab);
+      activeTabId = initialTab.id;
+      renderTabBar();
+      xmlEditor.value = initialTab.xml;
+      renderDiagram(initialTab.xml);
+      // Code panel starts collapsed
+      codePanel.classList.add('collapsed');
+      toggleCodeBtn.classList.remove('active');
+
+      window.addEventListener('resize', () => bpmnModeler.get('canvas').resized());
+    })();
+  </script>
+</body>
+</html>
