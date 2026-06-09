@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
   <process id="Process_1" isExecutable="true">
-    <startEvent id="StartEvent_1" name="Start" />
-    <exclusiveGateway id="Gateway_1gwhj2x" />
+    <startEvent id="StartEvent_1" name="Start">
+      <outgoing>Flow_1c3hk9l</outgoing>
+    </startEvent>
+    <exclusiveGateway id="Gateway_1gwhj2x">
+      <incoming>Flow_1c3hk9l</incoming>
+    </exclusiveGateway>
     <intermediateThrowEvent id="Event_132eexx" />
     <dataStoreReference id="DataStoreReference_1s6yeot" />
     <exclusiveGateway id="Gateway_185ae4l">
@@ -33,6 +37,7 @@
       <incoming>Flow_1f08plt</incoming>
     </task>
     <sequenceFlow id="Flow_1f08plt" sourceRef="Gateway_1haz83x" targetRef="Activity_1fgfgaa" />
+    <sequenceFlow id="Flow_1c3hk9l" sourceRef="StartEvent_1" targetRef="Gateway_1gwhj2x" />
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
@@ -88,6 +93,11 @@
       <bpmndi:BPMNEdge id="Flow_1f08plt_di" bpmnElement="Flow_1f08plt">
         <di:waypoint x="785" y="180" />
         <di:waypoint x="850" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1c3hk9l_di" bpmnElement="Flow_1c3hk9l">
+        <di:waypoint x="196" y="138" />
+        <di:waypoint x="230" y="138" />
+        <di:waypoint x="230" y="205" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
