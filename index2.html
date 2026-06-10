@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPMN 2.0 Editor – Productisan with Style Panel</title>
+  <!-- bpmn-js -->
+  <script src="https://unpkg.com/bpmn-js@15.0.0/dist/bpmn-modeler.development.js">
+  </script>
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@15.0.0/dist/assets/diagram-js.css">
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@15.0.0/dist/assets/bpmn-font/css/bpmn.css">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #f4f5f7;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header Toolbar */
+    .header {
+      background: #ffffff;
+      border-bottom: 1px solid #d1d5db;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      z-index: 10;
+    }
+    .header button {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #1f2937;
+      white-space: nowrap;
+    }
+    .header button i { font-size: 0.9rem; }
+    .header button:hover { background: #e5e7eb; border-color: #9ca3af; }
+    .header button.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #1d4ed8;
+    }
+    .header button.success { background: #059669; color: #fff; border-color: #047857; }
+    .header button.success:hover { background: #047857; }
+    .header button.warning { background: #f59e0b; color: #fff; border-color: #d97706; }
+    .header button.warning:hover { background: #d97706; }
+    .header button.danger { background: #ef4444; color: #fff; border-color: #dc2626; }
+    .header button.danger:hover { background: #dc2626; }
+    .separator {
+      width: 1px; height: 28px; background: #d1d5db; margin: 0 4px;
+    }
+
+    /* Preview close button */
+    .preview-close-btn {
+      display: none;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 2000;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    /* Main layout */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Code panel (sliding) */
+    .code-panel {
+      background: #ffffff;
+      border-right: 1px solid #d1d5db;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease, opacity 0.25s;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .code-panel.collapsed {
+      width: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .code-panel-header {
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #4b5563;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .code-toolbar {
+      display: flex;
+      gap: 4px;
+    }
+    .code-toolbar button {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      color: #4b5563;
+      transition: background 0.15s;
+    }
+    .code-toolbar button:hover { background: #e5e7eb; }
+    .code-panel textarea {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      tab-size: 2;
+      background: #ffffff;
+      color: #1f2937;
+    }
+    .apply-btn-row {
+      padding: 8px;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .apply-btn-row button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    /* Canvas area */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 2px;
+      overflow-x: auto;
+      min-height: 40px;
+    }
+    .tab {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      background: #e5e7eb;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      user-select: none;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: #4b5563;
+      transition: background 0.1s;
+    }
+    .tab.active {
+      background: #ffffff;
+      border-color: #d1d5db;
+      color: #111827;
+      font-weight: 600;
+    }
+    .tab .tab-name {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: text;
+    }
+    .tab .close-btn {
+      margin-left: 8px;
+      color: #9ca3af;
+      font-size: 0.8rem;
+      opacity: 0.6;
+      transition: opacity 0.1s;
+    }
+    .tab .close-btn:hover { opacity: 1; color: #ef4444; }
+    .tab.active .close-btn { opacity: 0.9; }
+    .add-tab-btn {
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      font-size: 1.2rem;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+    .add-tab-btn:hover { background: #e5e7eb; color: #111827; }
+
+    /* Canvas container */
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background: #ffffff;
+    }
+    #bpmnCanvas { width: 100%; height: 100%; }
+
+    /* Style Panel */
+    .style-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 50;
+      display: none;
+      font-size: 0.8rem;
+      min-width: 180px;
+    }
+    .style-panel.visible { display: block; }
+    .style-panel label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #4b5563;
+    }
+    .style-panel .color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .style-panel input[type="color"] {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .style-panel .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .style-panel button {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .style-panel button:hover { background: #e5e7eb; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .modal-box {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 350px;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .modal-box h3 { margin-bottom: 16px; font-size: 1.1rem; }
+    .modal-box p { margin-bottom: 20px; font-size: 0.9rem; color: #6b7280; }
+    .modal-box input, .modal-box select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+    .modal-box label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4b5563;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .modal-box button {
+      margin: 4px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+    .modal-box .confirm-btn { background: #2563eb; color: white; border-color: #1d4ed8; }
+    .modal-box .danger-btn { background: #ef4444; color: white; border-color: #dc2626; }
+    .modal-box .cancel-btn { background: #f3f4f6; }
+    .file-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .file-list-item:hover { background: #f9fafb; }
+    .file-list-item .file-name { font-weight: 500; font-size: 0.85rem; }
+    .file-list-item .file-actions { display: flex; gap: 4px; }
+    .file-list-item .file-actions button {
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      margin: 0;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-left: auto;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+    }
+    .status-dot.connected { background: #10b981; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: #1f2937;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .bjs-powered-by { display: none; }
+
+    /* Preview mode */
+    .preview-mode .header,
+    .preview-mode .code-panel,
+    .preview-mode .tab-bar { display: none !important; }
+    .preview-mode .canvas-area { height: 100vh; }
+    .preview-mode .canvas-container { height: 100vh; }
+    .preview-mode .preview-close-btn { display: block; }
+    .preview-mode .djs-palette { display: none !important; }
+    .preview-mode .djs-context-pad { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Header toolbar -->
+  <div class="header">
+    <button id="toggleCodeBtn" title="Toggle live code panel"><i class="fas fa-code"></i> Code</button>
+    <button id="openFileBtn" title="Open XML/BPMN file"><i class="fas fa-folder-open"></i> Open</button>
+    <button id="newTabBtn" title="New diagram tab"><i class="fas fa-plus"></i> New</button>
+    <button id="loadSampleBtn" title="Load sample template (new tab)"><i class="fas fa-file-code"></i> Sample</button>
+    <div class="separator"></div>
+    <button id="btnExportSVG" title="Download SVG"><i class="fas fa-image"></i> SVG</button>
+    <button id="btnExportBPMN" class="success" title="Download BPMN XML"><i class="fas fa-download"></i> BPMN</button>
+    <button id="btnPreview" title="Presentation mode"><i class="fas fa-expand"></i> Preview</button>
+    <div class="separator"></div>
+    <button id="btnGitHubSettings" title="GitHub Settings"><i class="fab fa-github"></i> GitHub</button>
+    <button id="btnGitHubLoad" title="Load from GitHub" style="display:none;"><i class="fas fa-cloud-download-alt"></i> Load</button>
+    <button id="btnGitHubSave" class="success" title="Save to GitHub" style="display:none;"><i class="fas fa-cloud-upload-alt"></i> Save</button>
+    <span class="status-indicator" id="githubStatus" style="display:none;">
+      <span class="status-dot connected"></span>
+      <span id="githubStatusText"></span>
+    </span>
+    <input type="file" id="fileInput" accept=".xml,.bpmn" style="display:none;">
+    <span style="margin-left:auto; font-size:0.75rem; color:#6b7280; white-space:nowrap;">Productisan - Kaung Htet</span>
+  </div>
+
+  <!-- Preview close button -->
+  <button class="preview-close-btn" id="previewCloseBtn"><i class="fas fa-times"></i> Exit Preview</button>
+
+  <!-- Main layout -->
+  <div class="main">
+    <div class="code-panel collapsed" id="codePanel">
+      <div class="code-panel-header">
+        <span>Live XML</span>
+        <div class="code-toolbar">
+          <button id="pasteBtn" title="Paste from clipboard"><i class="fas fa-paste"></i> Paste</button>
+          <button id="copyBtn" title="Copy all code"><i class="fas fa-copy"></i> Copy</button>
+          <button id="clearBtn" title="Clear editor"><i class="fas fa-eraser"></i> Clear</button>
+          <button id="selectAllBtn" title="Select all text"><i class="fas fa-text-height"></i> Select All</button>
+        </div>
+      </div>
+      <textarea id="xmlEditor" placeholder="BPMN XML of active tab..."></textarea>
+      <div class="apply-btn-row">
+        <button id="applyCodeBtn"><i class="fas fa-sync-alt"></i> Render XML</button>
+      </div>
+    </div>
+
+    <div class="canvas-area">
+      <div class="tab-bar" id="tabBar"></div>
+      <div class="canvas-container" id="canvasContainer">
+        <div id="bpmnCanvas"></div>
+        <!-- Style Panel -->
+        <div class="style-panel" id="stylePanel">
+          <div id="styleShapeControls">
+            <label>Fill Color</label>
+            <input type="color" id="fillColor" value="#ffffff">
+            <label>Stroke Color</label>
+            <input type="color" id="strokeColor" value="#000000">
+            <label>Text Color</label>
+            <input type="color" id="textColor" value="#000000">
+          </div>
+          <div id="styleConnectorControls" style="display:none;">
+            <label>Stroke Color</label>
+            <input type="color" id="connStrokeColor" value="#000000">
+            <div class="checkbox-row">
+              <input type="checkbox" id="dashedToggle">
+              <label for="dashedToggle">Dashed line</label>
+            </div>
+          </div>
+          <button id="resetStyleBtn"><i class="fas fa-undo"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Close confirmation modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <p><strong>Close this tab?</strong><br>Unsaved changes will be lost.</p>
+      <button class="cancel-btn" id="modalCancel">Cancel</button>
+      <button class="danger-btn" id="modalConfirm">Close Tab</button>
+    </div>
+  </div>
+
+  <!-- GitHub Settings Modal -->
+  <div class="modal-overlay" id="githubSettingsModal">
+    <div class="modal-box">
+      <h3><i class="fab fa-github"></i> GitHub Settings</h3>
+      <label>GitHub Username</label>
+      <input type="text" id="ghUsername" placeholder="e.g., kaung-htet">
+      <label>Repository Name</label>
+      <input type="text" id="ghRepo" placeholder="e.g., my-bpmn-diagrams">
+      <label>Branch (default: main)</label>
+      <input type="text" id="ghBranch" placeholder="main" value="main">
+      <label>Folder Path (optional)</label>
+      <input type="text" id="ghPath" placeholder="e.g., diagrams/ (leave empty for root)">
+      <label>Personal Access Token (PAT)</label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      <p style="font-size:0.7rem; color:#6b7280;">
+        <i class="fas fa-info-circle"></i> Token stored only in your browser. 
+        <a href="https://github.com/settings/tokens" target="_blank">Get PAT here</a>
+      </p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="cancel-btn" id="ghSettingsCancel">Cancel</button>
+        <button class="danger-btn" id="ghDisconnect" style="display:none;">Disconnect</button>
+        <button class="confirm-btn" id="ghSettingsSave">Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GitHub File Browser Modal -->
+  <div class="modal-overlay" id="githubFileModal">
+    <div class="modal-box">
+      <h3><i class="fab fa-github"></i> Load from GitHub</h3>
+      <div id="fileListContainer" style="max-height:300px; overflow-y:auto;">
+        <p style="text-align:center; color:#6b7280;">Loading files...</p>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="cancel-btn" id="ghFileCancel">Close</button>
+        <button class="confirm-btn" id="ghRefreshFiles"><i class="fas fa-sync-alt"></i> Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save to GitHub Modal -->
+  <div class="modal-overlay" id="githubSaveModal">
+    <div class="modal-box">
+      <h3><i class="fab fa-github"></i> Save to GitHub</h3>
+      <label>File Name</label>
+      <input type="text" id="ghSaveFileName" placeholder="diagram.bpmn">
+      <label>Commit Message</label>
+      <input type="text" id="ghCommitMsg" placeholder="Update diagram" value="Update diagram">
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="cancel-btn" id="ghSaveCancel">Cancel</button>
+        <button class="confirm-btn" id="ghSaveConfirm"><i class="fas fa-cloud-upload-alt"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="githubDeleteModal">
+    <div class="modal-box">
+      <h3><i class="fas fa-trash-alt"></i> Delete from GitHub</h3>
+      <p>Are you sure you want to delete <strong id="ghDeleteFileName"></strong>?</p>
+      <p style="color:#ef4444; font-size:0.8rem;">This action cannot be undone!</p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="cancel-btn" id="ghDeleteCancel">Cancel</button>
+        <button class="danger-btn" id="ghDeleteConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    (function() {
+      // Toast helper
+      const toastContainer = document.getElementById('toastContainer');
+      function toast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerHTML = msg;
+        toastContainer.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+      }
+
+      // GitHub API Service (unchanged)
+      const GitHubService = {
+        getConfig() {
+          return {
+            username: localStorage.getItem('gh_username') || '',
+            repo: localStorage.getItem('gh_repo') || '',
+            branch: localStorage.getItem('gh_branch') || 'main',
+            path: localStorage.getItem('gh_path') || '',
+            token: localStorage.getItem('gh_token') || ''
+          };
+        },
+        saveConfig(config) {
+          localStorage.setItem('gh_username', config.username);
+          localStorage.setItem('gh_repo', config.repo);
+          localStorage.setItem('gh_branch', config.branch || 'main');
+          localStorage.setItem('gh_path', config.path || '');
+          localStorage.setItem('gh_token', config.token);
+        },
+        clearConfig() {
+          ['gh_username', 'gh_repo', 'gh_branch', 'gh_path', 'gh_token'].forEach(k => localStorage.removeItem(k));
+        },
+        isConfigured() {
+          const c = this.getConfig();
+          return !!(c.username && c.repo && c.token);
+        },
+        async apiCall(method, apiPath, body = null) {
+          const config = this.getConfig();
+          const headers = {
+            'Authorization': `token ${config.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          };
+          if (body) headers['Content-Type'] = 'application/json';
+          const res = await fetch(`https://api.github.com${apiPath}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || `GitHub API: ${res.status}`);
+          }
+          return res.json();
+        },
+        async listFiles() {
+          const config = this.getConfig();
+          const apiPath = `/repos/${config.username}/${config.repo}/contents/${config.path}`;
+          const data = await this.apiCall('GET', apiPath);
+          return Array.isArray(data) ? data.filter(f => f.name.endsWith('.bpmn') || f.name.endsWith('.xml')) : [];
+        },
+        async loadFile(filePath) {
+          const config = this.getConfig();
+          const fullPath = config.path ? `${config.path}/${filePath}` : filePath;
+          const data = await this.apiCall('GET', `/repos/${config.username}/${config.repo}/contents/${fullPath}`);
+          return { content: atob(data.content), sha: data.sha, path: data.path };
+        },
+        async saveFile(fileName, content, commitMsg) {
+          const config = this.getConfig();
+          const fullPath = config.path ? `${config.path}/${fileName}` : fileName;
+          let sha = null;
+          try {
+            const existing = await this.apiCall('GET', `/repos/${config.username}/${config.repo}/contents/${fullPath}`);
+            sha = existing.sha;
+          } catch (e) {}
+          const body = {
+            message: commitMsg || 'Update diagram',
+            content: btoa(unescape(encodeURIComponent(content))),
+            branch: config.branch
+          };
+          if (sha) body.sha = sha;
+          return this.apiCall('PUT', `/repos/${config.username}/${config.repo}/contents/${fullPath}`, body);
+        },
+        async deleteFile(filePath) {
+          const config = this.getConfig();
+          const fullPath = config.path ? `${config.path}/${filePath}` : filePath;
+          const existing = await this.apiCall('GET', `/repos/${config.username}/${config.repo}/contents/${fullPath}`);
+          return this.apiCall('DELETE', `/repos/${config.username}/${config.repo}/contents/${fullPath}`, {
+            message: `Delete ${filePath}`,
+            sha: existing.sha,
+            branch: config.branch
+          });
+        }
+      };
+
+      // bpmn-js modeler
+      const canvasEl = document.getElementById('bpmnCanvas');
+      const bpmnModeler = new BpmnJS({
+        container: canvasEl,
+        keyboard: { bindTo: document }
+      });
+
+      // DOM elements
+      const tabBar = document.getElementById('tabBar');
+      const xmlEditor = document.getElementById('xmlEditor');
+      const codePanel = document.getElementById('codePanel');
+      const toggleCodeBtn = document.getElementById('toggleCodeBtn');
+      const previewCloseBtn = document.getElementById('previewCloseBtn');
+      const stylePanel = document.getElementById('stylePanel');
+      const canvasContainer = document.getElementById('canvasContainer');
+
+      // Tab management
+      let tabs = [];
+      let activeTabId = null;
+      let pendingCloseTabId = null;
+      let currentSelection = null;
+
+      const emptyDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  targetNamespace="http://bpmn.io/schema/bpmn"
+  id="Definitions_1">
+  <process id="Process_1" isExecutable="true">
+    <startEvent id="StartEvent_1" name="Start" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <omgdc:Bounds x="160" y="120" width="36" height="36" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`;
+
+      const sampleDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="Definitions_1">
+  <process id="Process_1" isExecutable="true">
+    <startEvent id="StartEvent_1" name="Order received">
+      <outgoing>Flow_1</outgoing>
+    </startEvent>
+    <task id="Task_Check" name="Check availability">
+      <incoming>Flow_1</incoming>
+      <outgoing>Flow_2</outgoing>
+    </task>
+    <sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Check" />
+    <exclusiveGateway id="Gateway_Avail" name="Available?">
+      <incoming>Flow_2</incoming>
+      <outgoing>Flow_Yes</outgoing>
+      <outgoing>Flow_No</outgoing>
+    </exclusiveGateway>
+    <sequenceFlow id="Flow_2" sourceRef="Task_Check" targetRef="Gateway_Avail" />
+    <task id="Task_Ship" name="Ship order">
+      <incoming>Flow_Yes</incoming>
+      <outgoing>Flow_Done</outgoing>
+    </task>
+    <sequenceFlow id="Flow_Yes" sourceRef="Gateway_Avail" targetRef="Task_Ship" />
+    <sequenceFlow id="Flow_No" sourceRef="Gateway_Avail" targetRef="EndEvent_No" />
+    <endEvent id="EndEvent_No" name="Out of stock">
+      <incoming>Flow_No</incoming>
+    </endEvent>
+    <endEvent id="EndEvent_Done" name="Completed">
+      <incoming>Flow_Done</incoming>
+    </endEvent>
+    <sequenceFlow id="Flow_Done" sourceRef="Task_Ship" targetRef="EndEvent_Done" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <omgdc:Bounds x="160" y="80" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Check_di" bpmnElement="Task_Check">
+        <omgdc:Bounds x="250" y="58" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Avail_di" bpmnElement="Gateway_Avail">
+        <omgdc:Bounds x="420" y="73" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Ship_di" bpmnElement="Task_Ship">
+        <omgdc:Bounds x="530" y="58" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Done_di" bpmnElement="EndEvent_Done">
+        <omgdc:Bounds x="700" y="80" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_No_di" bpmnElement="EndEvent_No">
+        <omgdc:Bounds x="420" y="180" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <omgdi:waypoint x="196" y="98" />
+        <omgdi:waypoint x="250" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <omgdi:waypoint x="350" y="98" />
+        <omgdi:waypoint x="420" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Yes_di" bpmnElement="Flow_Yes">
+        <omgdi:waypoint x="470" y="98" />
+        <omgdi:waypoint x="530" y="98" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_No_di" bpmnElement="Flow_No">
+        <omgdi:waypoint x="445" y="123" />
+        <omgdi:waypoint x="445" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Done_di" bpmnElement="Flow_Done">
+        <omgdi:waypoint x="630" y="98" />
+        <omgdi:waypoint x="700" y="98" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`;
+
+      // Tab helpers (unchanged)
+      function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+      function createTab(name, xml) { return { id: generateId(), name: name || 'Diagram', xml: xml || emptyDiagram }; }
+      function addTab(name, xml, switchTo = true) {
+        const tab = createTab(name, xml);
+        tabs.push(tab);
+        renderTabBar();
+        if (switchTo) switchTab(tab.id);
+      }
+      function removeTab(tabId) {
+        const index = tabs.findIndex(t => t.id === tabId);
+        if (index === -1) return;
+        if (tabs.length === 1) { toast('Cannot close the last tab.'); return; }
+        tabs.splice(index, 1);
+        renderTabBar();
+        if (activeTabId === tabId) {
+          const newIndex = Math.min(index, tabs.length - 1);
+          switchTab(tabs[newIndex].id);
+        }
+      }
+      async function switchTab(tabId) {
+        if (activeTabId === tabId) return;
+        await saveActiveTabXML();
+        activeTabId = tabId;
+        const tab = tabs.find(t => t.id === tabId);
+        if (!tab) return;
+        xmlEditor.value = tab.xml;
+        await renderDiagram(tab.xml);
+        renderTabBar();
+      }
+      async function saveActiveTabXML() {
+        if (!activeTabId) return;
+        try {
+          const { xml } = await bpmnModeler.saveXML({ format: true });
+          const tab = tabs.find(t => t.id === activeTabId);
+          if (tab) tab.xml = xml;
+        } catch (e) { console.warn('Could not save tab XML', e); }
+      }
+      async function renderDiagram(xml) {
+        try {
+          await bpmnModeler.importXML(xml);
+          hideStylePanel();
+        } catch (err) {
+          toast('Failed to render diagram: ' + err.message);
+        }
+      }
+      function escapeHtml(text) {
+        return String(text).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]);
+      }
+      function sanitizeFilename(name) {
+        return name.replace(/[^a-zA-Z0-9_\-. ]/g, '').replace(/\s+/g, '_').substring(0, 100) || 'diagram';
+      }
+
+      function renderTabBar() {
+        tabBar.innerHTML = '';
+        tabs.forEach(tab => {
+          const tabEl = document.createElement('div');
+          tabEl.className = `tab${tab.id === activeTabId ? ' active' : ''}`;
+          tabEl.setAttribute('data-tabid', tab.id);
+          tabEl.innerHTML = `
+            <span class="tab-name" title="Double-click to rename">${escapeHtml(tab.name)}</span>
+            <i class="fas fa-times close-btn" title="Close tab"></i>
+          `;
+          tabEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('close-btn')) return;
+            switchTab(tab.id);
+          });
+          tabEl.querySelector('.close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            pendingCloseTabId = tab.id;
+            document.getElementById('modalOverlay').classList.add('active');
+          });
+          const nameSpan = tabEl.querySelector('.tab-name');
+          nameSpan.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            startRename(tab, nameSpan);
+          });
+          tabBar.appendChild(tabEl);
+        });
+        const addBtn = document.createElement('button');
+        addBtn.className = 'add-tab-btn';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+        addBtn.title = 'New diagram tab';
+        addBtn.addEventListener('click', () => addTab('Diagram ' + (tabs.length + 1), emptyDiagram));
+        tabBar.appendChild(addBtn);
+      }
+
+      function startRename(tab, span) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = tab.name;
+        input.style.width = '120px';
+        input.style.padding = '2px 4px';
+        input.style.fontSize = '0.8rem';
+        span.replaceWith(input);
+        input.focus();
+        input.select();
+        const finish = () => {
+          const newName = input.value.trim() || 'Untitled';
+          tab.name = newName;
+          renderTabBar();
+        };
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') { input.value = tab.name; input.blur(); }
+        });
+      }
+
+      // Modal handlers
+      document.getElementById('modalCancel').addEventListener('click', () => {
+        document.getElementById('modalOverlay').classList.remove('active');
+        pendingCloseTabId = null;
+      });
+      document.getElementById('modalConfirm').addEventListener('click', () => {
+        if (pendingCloseTabId) {
+          removeTab(pendingCloseTabId);
+          pendingCloseTabId = null;
+        }
+        document.getElementById('modalOverlay').classList.remove('active');
+      });
+
+      // Toolbar actions
+      document.getElementById('newTabBtn').addEventListener('click', () => addTab('Diagram ' + (tabs.length + 1), emptyDiagram));
+      document.getElementById('loadSampleBtn').addEventListener('click', () => addTab('Sample Process', sampleDiagram));
+      document.getElementById('btnExportBPMN').addEventListener('click', async () => {
+        await saveActiveTabXML();
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+        const blob = new Blob([tab.xml], { type: 'application/bpmn+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = sanitizeFilename(tab.name) + '.bpmn';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('BPMN file downloaded');
+      });
+      document.getElementById('btnExportSVG').addEventListener('click', async () => {
+        try {
+          const { svg } = await bpmnModeler.saveSVG();
+          const blob = new Blob([svg], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = sanitizeFilename(tabs.find(t => t.id === activeTabId)?.name || 'diagram') + '.svg';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast('SVG exported');
+        } catch (err) { toast('SVG export failed'); }
+      });
+
+      // Preview mode
+      function enterPreview() {
+        document.body.classList.add('preview-mode');
+        previewCloseBtn.style.display = 'block';
+        hideStylePanel();
+        toast('Preview mode – press Esc or click Exit');
+      }
+      function exitPreview() {
+        document.body.classList.remove('preview-mode');
+        previewCloseBtn.style.display = 'none';
+      }
+      document.getElementById('btnPreview').addEventListener('click', enterPreview);
+      previewCloseBtn.addEventListener('click', exitPreview);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('preview-mode')) exitPreview();
+      });
+
+      // Open file
+      document.getElementById('openFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+      document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const name = file.name.replace(/\.(xml|bpmn)$/i, '');
+          addTab(name, ev.target.result);
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // Code panel
+      toggleCodeBtn.addEventListener('click', () => {
+        codePanel.classList.toggle('collapsed');
+        toggleCodeBtn.classList.toggle('active', !codePanel.classList.contains('collapsed'));
+      });
+      document.getElementById('pasteBtn').addEventListener('click', async () => {
+        try { const t = await navigator.clipboard.readText(); xmlEditor.value = t; toast('Pasted from clipboard'); }
+        catch { toast('Clipboard access denied'); }
+      });
+      document.getElementById('copyBtn').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(xmlEditor.value); toast('Code copied'); }
+        catch { toast('Copy failed'); }
+      });
+      document.getElementById('clearBtn').addEventListener('click', () => { xmlEditor.value = ''; toast('Editor cleared'); });
+      document.getElementById('selectAllBtn').addEventListener('click', () => { xmlEditor.select(); toast('All text selected'); });
+      document.getElementById('applyCodeBtn').addEventListener('click', async () => {
+        if (!activeTabId) return;
+        try {
+          await bpmnModeler.importXML(xmlEditor.value);
+          const tab = tabs.find(t => t.id === activeTabId);
+          if (tab) tab.xml = xmlEditor.value;
+          toast('Diagram updated from code');
+        } catch (err) { toast('Invalid XML: ' + err.message); }
+      });
+
+      // ── Style Panel Logic ─────────────────────────
+      function hideStylePanel() {
+        stylePanel.classList.remove('visible');
+        currentSelection = null;
+      }
+
+      function showStylePanel(element) {
+        if (!element || document.body.classList.contains('preview-mode')) {
+          hideStylePanel();
+          return;
+        }
+        currentSelection = element;
+        const isConnection = element.waypoints !== undefined;
+
+        document.getElementById('styleShapeControls').style.display = isConnection ? 'none' : 'block';
+        document.getElementById('styleConnectorControls').style.display = isConnection ? 'block' : 'none';
+
+        // Get current styles from SVG
+        const gfx = bpmnModeler.get('elementRegistry').getGraphics(element.id);
+        if (gfx) {
+          if (isConnection) {
+            const path = gfx.querySelector('.djs-visual path');
+            if (path) {
+              document.getElementById('connStrokeColor').value = rgbToHex(path.getAttribute('stroke') || '#000');
+              document.getElementById('dashedToggle').checked = path.getAttribute('stroke-dasharray') !== 'none' && path.getAttribute('stroke-dasharray') !== null;
+            }
+          } else {
+            const rect = gfx.querySelector('.djs-visual rect, .djs-visual circle, .djs-visual ellipse, .djs-visual path');
+            if (rect) {
+              document.getElementById('fillColor').value = rgbToHex(rect.getAttribute('fill') || '#ffffff');
+              document.getElementById('strokeColor').value = rgbToHex(rect.getAttribute('stroke') || '#000000');
+            }
+            const textEl = gfx.querySelector('.djs-label text');
+            if (textEl) {
+              document.getElementById('textColor').value = rgbToHex(textEl.getAttribute('fill') || '#000000');
+            }
+          }
+        }
+        stylePanel.classList.add('visible');
+      }
+
+      function rgbToHex(rgb) {
+        if (!rgb || rgb === 'none') return '#000000';
+        if (rgb.startsWith('#')) return rgb;
+        const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (match) {
+          return '#' + [1,2,3].map(i => parseInt(match[i]).toString(16).padStart(2, '0')).join('');
+        }
+        return '#000000';
+      }
+
+      function applyShapeStyle() {
+        if (!currentSelection) return;
+        const gfx = bpmnModeler.get('elementRegistry').getGraphics(currentSelection.id);
+        if (!gfx) return;
+        const fill = document.getElementById('fillColor').value;
+        const stroke = document.getElementById('strokeColor').value;
+        const textColor = document.getElementById('textColor').value;
+
+        const shapes = gfx.querySelectorAll('.djs-visual rect, .djs-visual circle, .djs-visual ellipse, .djs-visual path');
+        shapes.forEach(s => { s.setAttribute('fill', fill); s.setAttribute('stroke', stroke); });
+        const labels = gfx.querySelectorAll('.djs-label text');
+        labels.forEach(l => l.setAttribute('fill', textColor));
+      }
+
+      function applyConnectorStyle() {
+        if (!currentSelection) return;
+        const gfx = bpmnModeler.get('elementRegistry').getGraphics(currentSelection.id);
+        if (!gfx) return;
+        const path = gfx.querySelector('.djs-visual path');
+        if (!path) return;
+        const stroke = document.getElementById('connStrokeColor').value;
+        const dashed = document.getElementById('dashedToggle').checked;
+        path.setAttribute('stroke', stroke);
+        path.setAttribute('stroke-dasharray', dashed ? '8,4' : 'none');
+      }
+
+      function resetStyle() {
+        if (!currentSelection) return;
+        const gfx = bpmnModeler.get('elementRegistry').getGraphics(currentSelection.id);
+        if (!gfx) return;
+        // Remove inline styles to let CSS defaults take over
+        const allStyled = gfx.querySelectorAll('[fill], [stroke], [stroke-dasharray]');
+        allStyled.forEach(el => {
+          el.removeAttribute('fill');
+          el.removeAttribute('stroke');
+          el.removeAttribute('stroke-dasharray');
+        });
+        // Re-show panel to reflect reset values
+        showStylePanel(currentSelection);
+        toast('Style reset to defaults');
+      }
+
+      // Style panel event listeners
+      document.getElementById('fillColor').addEventListener('input', applyShapeStyle);
+      document.getElementById('strokeColor').addEventListener('input', applyShapeStyle);
+      document.getElementById('textColor').addEventListener('input', applyShapeStyle);
+      document.getElementById('connStrokeColor').addEventListener('input', applyConnectorStyle);
+      document.getElementById('dashedToggle').addEventListener('change', applyConnectorStyle);
+      document.getElementById('resetStyleBtn').addEventListener('click', resetStyle);
+
+      // Close style panel when clicking on canvas (but not on style panel)
+      canvasContainer.addEventListener('mousedown', (e) => {
+        if (!stylePanel.contains(e.target)) {
+          hideStylePanel();
+        }
+      });
+
+      // Listen for selection changes in bpmn-js
+      bpmnModeler.on('selection.changed', (event) => {
+        const selection = event.newSelection;
+        if (selection && selection.length === 1) {
+          showStylePanel(selection[0]);
+        } else {
+          hideStylePanel();
+        }
+      });
+
+      // ── GitHub Integration (unchanged) ──────────
+      function updateGitHubUI() {
+        const configured = GitHubService.isConfigured();
+        document.getElementById('btnGitHubLoad').style.display = configured ? '' : 'none';
+        document.getElementById('btnGitHubSave').style.display = configured ? '' : 'none';
+        document.getElementById('githubStatus').style.display = configured ? '' : 'none';
+        if (configured) {
+          document.getElementById('githubStatusText').textContent = `${GitHubService.getConfig().username}/${GitHubService.getConfig().repo}`;
+        }
+      }
+
+      document.getElementById('btnGitHubSettings').addEventListener('click', () => {
+        const config = GitHubService.getConfig();
+        document.getElementById('ghUsername').value = config.username;
+        document.getElementById('ghRepo').value = config.repo;
+        document.getElementById('ghBranch').value = config.branch;
+        document.getElementById('ghPath').value = config.path;
+        document.getElementById('ghToken').value = config.token;
+        document.getElementById('ghDisconnect').style.display = GitHubService.isConfigured() ? '' : 'none';
+        document.getElementById('githubSettingsModal').classList.add('active');
+      });
+      document.getElementById('ghSettingsCancel').addEventListener('click', () => {
+        document.getElementById('githubSettingsModal').classList.remove('active');
+      });
+      document.getElementById('ghDisconnect').addEventListener('click', () => {
+        GitHubService.clearConfig();
+        updateGitHubUI();
+        document.getElementById('githubSettingsModal').classList.remove('active');
+        toast('<i class="fas fa-unlink"></i> GitHub disconnected');
+      });
+      document.getElementById('ghSettingsSave').addEventListener('click', () => {
+        const config = {
+          username: document.getElementById('ghUsername').value.trim(),
+          repo: document.getElementById('ghRepo').value.trim(),
+          branch: document.getElementById('ghBranch').value.trim() || 'main',
+          path: document.getElementById('ghPath').value.trim(),
+          token: document.getElementById('ghToken').value.trim()
+        };
+        if (!config.username || !config.repo || !config.token) {
+          toast('Please fill in username, repo, and token');
+          return;
+        }
+        GitHubService.saveConfig(config);
+        updateGitHubUI();
+        document.getElementById('githubSettingsModal').classList.remove('active');
+        toast('<i class="fas fa-link"></i> GitHub connected!');
+      });
+
+      document.getElementById('btnGitHubLoad').addEventListener('click', async () => {
+        if (!GitHubService.isConfigured()) {
+          toast('Please configure GitHub settings first');
+          return;
+        }
+        document.getElementById('githubFileModal').classList.add('active');
+        await refreshFileList();
+      });
+      document.getElementById('ghFileCancel').addEventListener('click', () => {
+        document.getElementById('githubFileModal').classList.remove('active');
+      });
+      document.getElementById('ghRefreshFiles').addEventListener('click', refreshFileList);
+
+      async function refreshFileList() {
+        const container = document.getElementById('fileListContainer');
+        container.innerHTML = '<p style="text-align:center; color:#6b7280;">Loading files...</p>';
+        try {
+          const files = await GitHubService.listFiles();
+          if (files.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#6b7280;">No BPMN/XML files found</p>';
+          } else {
+            container.innerHTML = files.map(f => `
+              <div class="file-list-item">
+                <span class="file-name"><i class="far fa-file-code"></i> ${escapeHtml(f.name)}</span>
+                <div class="file-actions">
+                  <button onclick="window._ghLoadFile('${escapeHtml(f.name)}')" title="Load" style="background:#2563eb;color:#fff;border:none;">
+                    <i class="fas fa-download"></i>
+                  </button>
+                  <button onclick="window._ghDeleteFile('${escapeHtml(f.name)}')" title="Delete" style="background:#ef4444;color:#fff;border:none;">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('');
+          }
+        } catch (err) {
+          container.innerHTML = `<p style="text-align:center; color:#ef4444;">Error: ${err.message}</p>`;
+        }
+      }
+
+      window._ghLoadFile = async function(fileName) {
+        try {
+          const data = await GitHubService.loadFile(fileName);
+          addTab(fileName.replace(/\.(xml|bpmn)$/i, ''), data.content);
+          document.getElementById('githubFileModal').classList.remove('active');
+          toast(`Loaded <strong>${fileName}</strong> from GitHub`);
+        } catch (err) {
+          toast(`Failed to load: ${err.message}`);
+        }
+      };
+
+      window._ghDeleteFile = async function(fileName) {
+        document.getElementById('ghDeleteFileName').textContent = fileName;
+        document.getElementById('githubDeleteModal').dataset.fileName = fileName;
+        document.getElementById('githubDeleteModal').classList.add('active');
+      };
+
+      document.getElementById('ghDeleteCancel').addEventListener('click', () => {
+        document.getElementById('githubDeleteModal').classList.remove('active');
+      });
+      document.getElementById('ghDeleteConfirm').addEventListener('click', async () => {
+        const fileName = document.getElementById('githubDeleteModal').dataset.fileName;
+        try {
+          await GitHubService.deleteFile(fileName);
+          toast(`Deleted <strong>${fileName}</strong> from GitHub`);
+          document.getElementById('githubDeleteModal').classList.remove('active');
+          await refreshFileList();
+        } catch (err) {
+          toast(`Delete failed: ${err.message}`);
+        }
+      });
+
+      document.getElementById('btnGitHubSave').addEventListener('click', async () => {
+        if (!GitHubService.isConfigured()) {
+          toast('Please configure GitHub settings first');
+          return;
+        }
+        await saveActiveTabXML();
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+        const defaultName = sanitizeFilename(tab.name) + '.bpmn';
+        document.getElementById('ghSaveFileName').value = defaultName;
+        document.getElementById('ghCommitMsg').value = `Update ${tab.name}`;
+        document.getElementById('githubSaveModal').classList.add('active');
+      });
+      document.getElementById('ghSaveCancel').addEventListener('click', () => {
+        document.getElementById('githubSaveModal').classList.remove('active');
+      });
+      document.getElementById('ghSaveConfirm').addEventListener('click', async () => {
+        const fileName = document.getElementById('ghSaveFileName').value.trim();
+        const commitMsg = document.getElementById('ghCommitMsg').value.trim();
+        if (!fileName) { toast('Please enter a file name'); return; }
+        if (!fileName.endsWith('.bpmn') && !fileName.endsWith('.xml')) {
+          toast('File name must end with .bpmn or .xml');
+          return;
+        }
+        await saveActiveTabXML();
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+        try {
+          await GitHubService.saveFile(fileName, tab.xml, commitMsg);
+          toast(`Saved <strong>${fileName}</strong> to GitHub`);
+          document.getElementById('githubSaveModal').classList.remove('active');
+        } catch (err) {
+          toast(`Save failed: ${err.message}`);
+        }
+      });
+
+      // Initialize
+      const initialTab = createTab('Diagram 1', emptyDiagram);
+      tabs.push(initialTab);
+      activeTabId = initialTab.id;
+      renderTabBar();
+      xmlEditor.value = initialTab.xml;
+      renderDiagram(initialTab.xml);
+      codePanel.classList.add('collapsed');
+      toggleCodeBtn.classList.remove('active');
+      updateGitHubUI();
+      window.addEventListener('resize', () => bpmnModeler.get('canvas').resized());
+    })();
+  </script>
+</body>
+</html>
